@@ -61,7 +61,8 @@ streamlit run app/streamlit_app.py
 
 ## Donnees
 
-- **DVF** : telechargees depuis https://files.data.gouv.fr/geo-dvf/latest/csv/83/
+- **DVF** : telechargees depuis <https://www.data.gouv.fr/datasets/demandes-de-valeurs-foncieres>
+    Fichiers principaux : ValeursFoncieres-2023.txt, ValeursFoncieres-2024.txt, ValeursFoncieres-2025-S1.txt
 - **Annonces** : collectees via [GumLoop / scraper Python] le [DATE]
 
 ## References
