@@ -1,3 +1,4 @@
+[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/JY1xUUGg)
 # Projet 1 : Observatoire du Marche Immobilier Toulonnais
 
 ## Objectif
@@ -53,15 +54,16 @@ streamlit run app/streamlit_app.py
 ## Repartition du travail
 
 | Membre | Role | Contributions principales |
-|--------|------|--------------------------|
-| Prenom NOM | Data Engineer | ... |
-| Prenom NOM | Data Scientist | ... |
-| Prenom NOM | AI Engineer | ... |
-| Prenom NOM | Frontend / DevOps | ... |
+|--------|------|---------------------------|
+| Prenom NOM | Data Engineer | Matthias Caro-becker      |
+| Prenom NOM | Data Scientist | Jimmy Ribeiro             |
+| Prenom NOM | AI Engineer | Mamoune Nidam             |
+| Prenom NOM | Frontend / DevOps | Inde Hadaoui              |
 
 ## Donnees
 
-- **DVF** : telechargees depuis https://files.data.gouv.fr/geo-dvf/latest/csv/83/
+- **DVF** : telechargees depuis <https://www.data.gouv.fr/datasets/demandes-de-valeurs-foncieres>
+    Fichiers principaux : ValeursFoncieres-2023.txt, ValeursFoncieres-2024.txt, ValeursFoncieres-2025-S1.txt
 - **Annonces** : collectees via [GumLoop / scraper Python] le [DATE]
 
 ## References

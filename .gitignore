@@ -24,6 +24,12 @@ evaluation_report.md
 analyse_toulon_executed.ipynb
 notebook_execution.log
 
+# Project docs (local only)
+project/
+
 # Secrets
 .env
 .env.local
+
+data/raw/*
+!data/raw/.gitkeep
