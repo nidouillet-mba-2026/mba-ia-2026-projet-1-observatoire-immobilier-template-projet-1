@@ -1,0 +1,11 @@
+streamlit
+pandas
+requests
+beautifulsoup4
+supabase
+python-dotenv
+pytest
+lxml
+anthropic
+folium
+streamlit-folium

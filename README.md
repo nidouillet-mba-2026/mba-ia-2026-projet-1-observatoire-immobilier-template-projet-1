@@ -1,3 +1,4 @@
+[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/JY1xUUGg)
 # Projet 1 : Observatoire du Marche Immobilier Toulonnais
 
 ## Objectif
@@ -48,21 +49,46 @@ streamlit run app/streamlit_app.py
 
 ## Application deployee
 
-**URL :** <!-- REMPLACEZ PAR VOTRE URL DE DEPLOIEMENT -->
+**URL :** https://embedding-immo.streamlit.app
 
 ## Repartition du travail
 
 | Membre | Role | Contributions principales |
 |--------|------|--------------------------|
-| Prenom NOM | Data Engineer | ... |
-| Prenom NOM | Data Scientist | ... |
-| Prenom NOM | AI Engineer | ... |
-| Prenom NOM | Frontend / DevOps | ... |
+| Prenom NOM | Data Engineer | TEURROC ALAN |
+| Prenom NOM | Data Scientist | MESSER NOA / ESCOUBOUE MAYEUL |
+| Prenom NOM | AI Engineer | JOUANIQUE SIMON |
+| Prenom NOM | Frontend / DevOps | LETTULIER TOM |
 
 ## Donnees
 
 - **DVF** : telechargees depuis https://files.data.gouv.fr/geo-dvf/latest/csv/83/
-- **Annonces** : collectees via [GumLoop / scraper Python] le [DATE]
+- **Annonces** : collectees via BeautifulSoup le 9 Mars 2026
+
+## Scoring heuristique (sans IA)
+
+Le module `scraping/scoring.py` propose un scoring des annonces entierement base sur des regles metier, sans appel a une API IA. Il produit les memes champs que l'enrichissement Claude (`score_marche`, `etat_bien`, `score_jeune_couple`, `tags`...).
+
+```bash
+# Enrichir toutes les annonces non encore traitees
+python -m scraping.scoring
+
+# Limiter a 50 annonces (test)
+python -m scraping.scoring --limit 50
+```
+
+```python
+# Utilisation directe dans du code
+from scraping.scoring import enrichir_annonce_heuristique
+
+annonce = {"titre": "Appartement vue mer avec parking", "prix": 195000, "surface": 48, "pieces": 3}
+champs = enrichir_annonce_heuristique(annonce, score_stat="Opportunite")
+# → {"score_jeune_couple": 4, "etat_bien": "inconnu", "tags": '["vue_mer", "parking_inclus"]', ...}
+```
+
+## Suggestions de biens similaires (k-NN)
+
+Dans l'onglet **Annonces actives**, cliquer sur une annonce affiche 5 biens similaires calculés par un k-NN from scratch (`knn/`) : distance euclidienne pondérée et normalisée sur `prix_m2` (×2), `type_bien` (×2), `surface` (×1.5), `quartier` (×1.5) et `pieces` (×1).
 
 ## References
 
