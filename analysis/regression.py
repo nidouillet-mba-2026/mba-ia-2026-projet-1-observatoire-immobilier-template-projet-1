@@ -1,8 +1,6 @@
 """
 Regression lineaire simple from scratch.
 Reference : Joel Grus, "Data Science From Scratch", chapitre 14.
-
-IMPORTANT : N'importez pas sklearn, numpy ou scipy pour ces fonctions.
 """
 
 from analysis.stats import mean, variance, covariance
@@ -10,20 +8,16 @@ from analysis.stats import mean, variance, covariance
 
 def predict(alpha: float, beta: float, x_i: float) -> float:
     """Predit y pour une valeur x : y = alpha + beta * x."""
-    # VOTRE CODE ICI
-    raise NotImplementedError("Implementez predict() - voir Grus ch.14")
+    return alpha + beta * x_i
 
 
 def error(alpha: float, beta: float, x_i: float, y_i: float) -> float:
     """Calcule l'erreur de prediction pour un point."""
-    # VOTRE CODE ICI
-    raise NotImplementedError("Implementez error() - voir Grus ch.14")
-
+    return y_i - predict(alpha, beta, x_i)
 
 def sum_of_sqerrors(alpha: float, beta: float, x: list, y: list) -> float:
     """Somme des erreurs au carre sur tous les points."""
-    # VOTRE CODE ICI
-    raise NotImplementedError("Implementez sum_of_sqerrors() - voir Grus ch.14")
+    return sum(error(alpha, beta, x_i, y_i) ** 2 for x_i, y_i in zip(x, y))
 
 
 def least_squares_fit(x: list[float], y: list[float]) -> tuple[float, float]:
@@ -31,10 +25,14 @@ def least_squares_fit(x: list[float], y: list[float]) -> tuple[float, float]:
     Trouve alpha et beta qui minimisent la somme des erreurs au carre.
     Retourne (alpha, beta) tels que y ≈ alpha + beta * x.
     """
-    # VOTRE CODE ICI
-    # Indices : beta = covariance(x, y) / variance(x)
-    #           alpha = mean(y) - beta * mean(x)
-    raise NotImplementedError("Implementez least_squares_fit() - voir Grus ch.14")
+    var_x = variance(x)
+
+    if var_x == 0:
+        raise ValueError("La variance de x ne peut pas etre nulle.")
+
+    beta = covariance(x, y) / var_x
+    alpha = mean(y) - beta * mean(x)
+    return alpha, beta
 
 
 def r_squared(alpha: float, beta: float, x: list, y: list) -> float:
@@ -43,5 +41,11 @@ def r_squared(alpha: float, beta: float, x: list, y: list) -> float:
     R² = 1 - (SS_res / SS_tot)
     1.0 = ajustement parfait, 0.0 = le modele n'explique rien.
     """
-    # VOTRE CODE ICI
-    raise NotImplementedError("Implementez r_squared() - voir Grus ch.14")
+    y_mean = mean(y)
+    ss_res = sum_of_sqerrors(alpha, beta, x, y)
+    ss_tot = sum((y_i - y_mean) ** 2 for y_i in y)
+
+    if ss_tot == 0:
+        return 0
+
+    return 1 - (ss_res / ss_tot)
