@@ -69,3 +69,7 @@ streamlit run app/streamlit_app.py
 ## References
 
 - Joel Grus, *Data Science From Scratch*, ch.5 (statistiques) et ch.14 (regression)
+
+## Lien de déploiement 
+
+https://niddouillet5.streamlit.app/
