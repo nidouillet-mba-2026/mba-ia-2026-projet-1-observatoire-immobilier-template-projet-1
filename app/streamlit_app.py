@@ -19,10 +19,10 @@ sys.path.insert(0, str(ROOT))
 
 from analysis.stats import (
     mean, median, variance, standard_deviation,
-    correlation, percentile, describe
+    correlation
 )
 from analysis.regression import least_squares_fit, predict, r_squared
-from analysis.scoring import opportunity_score, knn_similar
+from analysis.scoring import opportunity_score
 
 # ─── Config page ────────────────────────────────────────────────────────────
 
@@ -396,12 +396,10 @@ def load_dvf():
 
     df = pd.read_csv(dvf_path, low_memory=False)
     col_map = {}
-    prix_mapped = False
     for col in df.columns:
         lc = col.lower().replace(" ", "_")
-        if not prix_mapped and ("valeur" in lc or lc == "prix"):
+        if "prix" in lc or "valeur" in lc:
             col_map[col] = "prix"
-            prix_mapped = True
         elif "surface" in lc and "bati" in lc:
             col_map[col] = "surface"
         elif "commune" in lc or "nom_commune" in lc:
@@ -412,10 +410,6 @@ def load_dvf():
             col_map[col] = "type_bien"
         elif "date" in lc and "mutation" in lc:
             col_map[col] = "date"
-        elif "zone" in lc or "quartier" in lc:
-            col_map[col] = "quartier"
-        elif "nombre_pieces" in lc or "nb_pieces" in lc:
-            col_map[col] = "pieces"
     df = df.rename(columns=col_map)
     if "commune" in df.columns:
         df = df[df["commune"].str.upper().str.contains("TOULON", na=False)]
@@ -433,24 +427,10 @@ def load_dvf():
 
 @st.cache_data(show_spinner="Chargement des annonces…")
 def load_annonces():
-    for name in ["annonces_toulon.csv", "annonces.csv", "annonces_actuelles.csv"]:
-        p = ROOT / "data" / name
-        if p.exists():
-            df = pd.read_csv(p, low_memory=False)
-            if "prix" in df.columns:
-                df["prix"] = df["prix"].astype(str).str.replace(r"[^\d]", "", regex=True)
-                df["prix"] = pd.to_numeric(df["prix"], errors="coerce")
-            if "surface" in df.columns:
-                df["surface"] = pd.to_numeric(df["surface"], errors="coerce")
-            if "prix_m2" in df.columns:
-                df["prix_m2"] = df["prix_m2"].astype(str).str.replace(r"[^\d]", "", regex=True)
-                df["prix_m2"] = pd.to_numeric(df["prix_m2"], errors="coerce")
-            elif "prix" in df.columns and "surface" in df.columns:
-                df["prix_m2"] = df["prix"] / df["surface"]
-            if "nb_pieces" in df.columns and "pieces" not in df.columns:
-                df = df.rename(columns={"nb_pieces": "pieces"})
-            return df
-    return None
+    ann_path = ROOT / "data" / "annonces.csv"
+    if not ann_path.exists():
+        return None  # Pas de données disponibles
+    return pd.read_csv(ann_path, low_memory=False)
 
 
 # ─── Sidebar ─────────────────────────────────────────────────────────────────
@@ -490,14 +470,6 @@ with st.sidebar:
 
     surface_min = st.slider("Surface min (m²)", 10, 150, 30)
 
-    quartier_options = ["Tous"] + sorted(df_dvf_raw["quartier"].dropna().unique().tolist()) \
-        if dvf_ok and "quartier" in df_dvf_raw.columns else ["Tous"]
-    quartier_filter = st.selectbox("Quartier", quartier_options)
-
-    pieces_options = ["Tous"] + sorted(df_dvf_raw["pieces"].dropna().astype(int).unique().tolist()) \
-        if dvf_ok and "pieces" in df_dvf_raw.columns else ["Tous"]
-    pieces_filter = st.selectbox("Nombre de pièces", pieces_options)
-
     st.divider()
     dvf_label = f"<b style='color:#6b7a8d'>{len(df_dvf_raw):,}</b>" if dvf_ok else "<b style='color:#e05c5c'>—</b>"
     ann_label  = f"<b style='color:#6b7a8d'>{len(df_ann_raw):,}</b>" if ann_ok  else "<b style='color:#e05c5c'>—</b>"
@@ -520,10 +492,6 @@ def apply_filters(df):
         d = d[d["prix"] <= budget]
     if "surface" in d.columns:
         d = d[d["surface"] >= surface_min]
-    if quartier_filter != "Tous" and "quartier" in d.columns:
-        d = d[d["quartier"] == quartier_filter]
-    if pieces_filter != "Tous" and "pieces" in d.columns:
-        d = d[d["pieces"] == int(pieces_filter)]
     return d
 
 df_dvf = apply_filters(df_dvf_raw)
@@ -591,7 +559,7 @@ if page == "📊 Tableau de bord":
             fig = go.Figure()
             fig.add_trace(go.Histogram(x=pm2_vals, nbinsx=50,
                                        marker_color=TEAL, opacity=0.85, name="DVF"))
-            if df_ann is not None and "prix_m2" in df_ann.columns:
+            if "prix_m2" in df_ann.columns:
                 fig.add_trace(go.Histogram(
                     x=df_ann["prix_m2"].dropna().tolist(),
                     nbinsx=40, marker_color=GOLD, opacity=0.65, name="Annonces"))
@@ -606,7 +574,7 @@ if page == "📊 Tableau de bord":
                                xaxis_title="€/m²", yaxis_title="Fréquence",
                                xaxis=dict(gridcolor="rgba(255,255,255,0.04)"),
                                yaxis=dict(gridcolor="rgba(255,255,255,0.04)"))
-            st.plotly_chart(fig, width="stretch")
+            st.plotly_chart(fig, use_container_width=True)
 
     with col_b:
         if pm2_vals and len(pm2_vals) >= 4:
@@ -650,7 +618,7 @@ if page == "📊 Tableau de bord":
                             xaxis_title="€/m²",
                             xaxis=dict(gridcolor="rgba(255,255,255,0.04)"),
                             yaxis=dict(gridcolor="rgba(0,0,0,0)"))
-        st.plotly_chart(fig2, width="stretch")
+        st.plotly_chart(fig2, use_container_width=True)
 
 
 # ─── PAGE : CARTE ─────────────────────────────────────────────────────────────
@@ -662,9 +630,14 @@ elif page == "🗺️ Carte des prix":
         st.stop()
 
     COORDS = {
-        "Centre / Littoral": (43.1242, 5.9300),
-        "Ouest Toulon":      (43.1400, 5.9050),
-        "Est Toulon":        (43.1250, 5.9550),
+        "Centre":        (43.1242, 5.9280),
+        "Le Mourillon":  (43.1168, 5.9450),
+        "Le Jonquet":    (43.1350, 5.9100),
+        "La Serinette":  (43.1450, 5.9200),
+        "Sainte-Musse":  (43.1300, 5.9600),
+        "Cap Brun":      (43.1050, 5.9550),
+        "La Rode":       (43.1380, 5.9400),
+        "Pont du Las":   (43.1480, 5.9350),
     }
 
     if "quartier" in df_dvf.columns and "prix_m2" in df_dvf.columns:
@@ -687,11 +660,11 @@ elif page == "🗺️ Carte des prix":
             paper_bgcolor="#111827",
             coloraxis_colorbar=dict(title="€/m²", tickfont=dict(color="#c8bfad"), title_font=dict(color="#c8bfad")),
         )
-        st.plotly_chart(fig_map, width="stretch")
+        st.plotly_chart(fig_map, use_container_width=True)
         st.dataframe(
             q_agg[["quartier", "prix_m2_moyen"]].rename(
                 columns={"quartier": "Quartier", "prix_m2_moyen": "€/m² moyen"}),
-            width="stretch", hide_index=True)
+            use_container_width=True, hide_index=True)
     else:
         st.info("Données quartier non disponibles.")
 
@@ -737,7 +710,7 @@ elif page == "📈 Tendances":
                 xaxis_title="Mois", yaxis_title="Prix moyen €/m²",
                 xaxis=dict(tickangle=45, gridcolor="rgba(255,255,255,0.04)"),
                 yaxis=dict(gridcolor="rgba(255,255,255,0.04)"))
-            st.plotly_chart(fig_trend, width="stretch")
+            st.plotly_chart(fig_trend, use_container_width=True)
             st.metric("Tendance mensuelle", f"{beta:+.1f} €/m²/mois")
 
     if "type_bien" in df_dvf.columns and "prix_m2" in df_dvf.columns:
@@ -755,7 +728,7 @@ elif page == "📈 Tendances":
             xaxis_title="Type de bien", yaxis_title="€/m²",
             xaxis=dict(gridcolor="rgba(255,255,255,0.04)"),
             yaxis=dict(gridcolor="rgba(255,255,255,0.04)"))
-        st.plotly_chart(fig_box, width="stretch")
+        st.plotly_chart(fig_box, use_container_width=True)
 
 
 # ─── PAGE : SCORING ───────────────────────────────────────────────────────────
@@ -771,43 +744,26 @@ elif page == "🔍 Scoring Opportunités":
         market_pm2 = df_dvf["prix_m2"].dropna().tolist()
         scored = df_ann.copy()
         scored["score"] = scored["prix_m2"].apply(
-            lambda p: opportunity_score(p, market_pm2) if pd.notna(p) else 0)
+            lambda p: opportunity_score(p, market_pm2) if not np.isnan(p) else 0)
         scored = scored.sort_values("score", ascending=False)
 
-        def _score_badge(s):
+        def fmt_score(s):
             if s >= 70:
-                return "score-high", "Opportunité"
+                return f'<span class="score-high">⭐ {s:.0f}/100</span>'
             elif s >= 45:
-                return "score-medium", "Prix marché"
-            return "score-low", "Surévalué"
+                return f'<span class="score-medium">🟡 {s:.0f}/100</span>'
+            else:
+                return f'<span class="score-low">🔴 {s:.0f}/100</span>'
 
-        top = scored.head(12)
-        cols = st.columns(3)
-        for i, (_, row) in enumerate(top.iterrows()):
-            with cols[i % 3]:
-                photo = row.get("photo_1", "")
-                if pd.notna(photo) and photo:
-                    st.image(photo, use_container_width=True)
-                sc_class, sc_label = _score_badge(row["score"])
-                titre = row.get("titre", "")
-                if pd.notna(titre) and len(str(titre)) > 60:
-                    titre = str(titre)[:60] + "…"
-                prix_fmt = f"{row['prix']:,.0f} €" if pd.notna(row.get("prix")) else "N/A"
-                pm2_fmt = f"{row['prix_m2']:,.0f} €/m²" if pd.notna(row.get("prix_m2")) else ""
-                surface_fmt = f"{row['surface']:.0f} m²" if pd.notna(row.get("surface")) else ""
-                quartier = row.get("quartier", "")
-                lien = row.get("lien", "")
-                st.markdown(f"""
-                <div style="background:#111827;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:1rem;margin-bottom:1rem">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-                    <span class="{sc_class}">{row['score']:.0f}/100 · {sc_label}</span>
-                  </div>
-                  <div style="color:#f5e6c8;font-weight:700;font-size:0.95rem;margin-bottom:0.3rem">{prix_fmt}</div>
-                  <div style="color:#6b7a8d;font-size:0.8rem">{surface_fmt} · {pm2_fmt}</div>
-                  <div style="color:#4a5a6a;font-size:0.75rem;margin-top:0.2rem">{quartier}</div>
-                  <div style="color:#3a4a5a;font-size:0.72rem;margin-top:0.4rem">{titre}</div>
-                  {"<a href='" + str(lien) + "' target='_blank' style='color:#ffb43c;font-size:0.75rem;text-decoration:none'>Voir l'annonce →</a>" if pd.notna(lien) and lien else ""}
-                </div>""", unsafe_allow_html=True)
+        top = scored.head(10).copy()
+        top["Score"]   = top["score"].apply(fmt_score)
+        top["Prix"]    = top["prix"].apply(lambda v: f"{v:,.0f} €")
+        top["€/m²"]    = top["prix_m2"].apply(lambda v: f"{v:,.0f}")
+        top["Surface"] = top["surface"].apply(lambda v: f"{v:.0f} m²")
+
+        cols_show = [c for c in ["quartier", "type_bien", "Surface", "Prix", "€/m²", "Score"]
+                     if c in top.columns]
+        st.markdown(top[cols_show].to_html(escape=False, index=False), unsafe_allow_html=True)
 
         st.markdown('<div class="section-title">💹 Prix vs Score</div>', unsafe_allow_html=True)
         fig_sc = px.scatter(
@@ -826,41 +782,7 @@ elif page == "🔍 Scoring Opportunités":
             xaxis_title="Prix (€)", yaxis_title="Score opportunité",
             xaxis=dict(gridcolor="rgba(255,255,255,0.04)"),
             yaxis=dict(gridcolor="rgba(255,255,255,0.04)"))
-        st.plotly_chart(fig_sc, width="stretch")
-
-        st.markdown('<div class="section-title">🏘️ Biens similaires (k-NN from scratch)</div>', unsafe_allow_html=True)
-        st.markdown("<p style='color:#6b7a8d;font-size:0.9rem'>Sélectionnez un bien pour trouver les 5 annonces les plus proches par surface et prix.</p>", unsafe_allow_html=True)
-
-        ann_valid = scored.dropna(subset=["prix", "surface"]).reset_index(drop=True)
-        if len(ann_valid) >= 6:
-            ann_labels = [f"{r['prix']:,.0f}€ · {r['surface']:.0f}m² · {r.get('quartier','')}" for _, r in ann_valid.iterrows()]
-            selected_idx = st.selectbox("Choisir un bien", range(len(ann_labels)), format_func=lambda i: ann_labels[i])
-
-            target = [ann_valid.iloc[selected_idx]["surface"], ann_valid.iloc[selected_idx]["prix"]]
-            dataset = ann_valid[["surface", "prix"]].values.tolist()
-            labels = list(range(len(ann_valid)))
-
-            neighbors = knn_similar(target, dataset, labels, k=6)
-            neighbors = [n for n in neighbors if n != selected_idx][:5]
-
-            st.markdown(f"<p style='color:#c8bfad;font-size:0.85rem;margin-top:1rem'>5 biens les plus similaires à <b>{ann_labels[selected_idx]}</b></p>", unsafe_allow_html=True)
-            n_cols = st.columns(5)
-            for i, idx in enumerate(neighbors):
-                row = ann_valid.iloc[idx]
-                with n_cols[i]:
-                    photo = row.get("photo_1", "")
-                    if pd.notna(photo) and photo:
-                        st.image(photo, use_container_width=True)
-                    prix_fmt = f"{row['prix']:,.0f} €" if pd.notna(row.get("prix")) else ""
-                    surface_fmt = f"{row['surface']:.0f} m²" if pd.notna(row.get("surface")) else ""
-                    lien = row.get("lien", "")
-                    st.markdown(f"""
-                    <div style="background:#111827;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:0.8rem;font-size:0.8rem">
-                      <div style="color:#f5e6c8;font-weight:700">{prix_fmt}</div>
-                      <div style="color:#6b7a8d">{surface_fmt}</div>
-                      <div style="color:#4a5a6a;font-size:0.72rem">{row.get('quartier','')}</div>
-                      {"<a href='" + str(lien) + "' target='_blank' style='color:#ffb43c;font-size:0.72rem;text-decoration:none'>Voir →</a>" if pd.notna(lien) and lien else ""}
-                    </div>""", unsafe_allow_html=True)
+        st.plotly_chart(fig_sc, use_container_width=True)
 
 
 # ─── PAGE : STATS AVANCÉES ────────────────────────────────────────────────────
@@ -917,7 +839,7 @@ elif page == "⚙️ Stats avancées":
                     xaxis_title="Surface (m²)", yaxis_title="Prix (€)",
                     xaxis=dict(gridcolor="rgba(255,255,255,0.04)"),
                     yaxis=dict(gridcolor="rgba(255,255,255,0.04)"))
-                st.plotly_chart(fig_reg, width="stretch")
+                st.plotly_chart(fig_reg, use_container_width=True)
 
                 st.markdown("**🧮 Simulateur de prix**")
                 sim_surf = st.slider("Surface (m²)", 20, 200, 65)
